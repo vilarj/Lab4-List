@@ -1,134 +1,236 @@
 package classes;
 
-import java.util.Arrays;
-
 public class LinkedList<T> implements ListInterface<T> {
-	private T[] list;
-	private int numberOfEntries, capacity;
-	private static final int DEFAULT_CAPACITY = 10;
-	private static final int MAX_CAPACITY = 10000;
-	
-	public LinkedList(int capacity) {
-		if (capacity < DEFAULT_CAPACITY) {
-            capacity = DEFAULT_CAPACITY;
-		}
-		
-        else
-            checkCapacity (capacity);
-        
-		this.capacity = capacity;
-        
-        @SuppressWarnings("unchecked")
-		T[] temp = (T[]) new Object[capacity];
-        list = temp;
-        numberOfEntries = 0;
-	}
-
-	public LinkedList() {this(DEFAULT_CAPACITY);}
+	private Node firstNode;
+	private int numberOfEntries;
 
 	@Override
 	public void add(T newEntry) {
-		list[numberOfEntries] = newEntry;
-	      numberOfEntries ++;
-	      ensureCapacity();
+		Node toInsert = new Node(newEntry, null);
+		numberOfEntries++;
+
+		if (firstNode == null) {// empty list
+			firstNode = toInsert;
+			return;
+		}
+
+		boolean endFound;
+		Node currNode = firstNode;
+		Node nextNode = firstNode.getNext();
+
+		do {
+			endFound = (nextNode == null);
+			if (!endFound) {
+				currNode = nextNode;
+				assert (nextNode != null);
+				nextNode = nextNode.getNext();
+			}
+		} 
+		while (!endFound);
+		assert (currNode != null);
+		currNode.setNext(toInsert);
 	}
 
 	@Override
 	public void add(int newPosition, T newEntry) {
-        if (newPosition < 0 || newPosition > numberOfEntries)
-            throw new IndexOutOfBoundsException();
-        makeRoom (newPosition);
-        list[newPosition] = newEntry;
-        numberOfEntries ++;
-        ensureCapacity();
+		if (newPosition < 0 || newPosition > getLength())
+			throw new IndexOutOfBoundsException();
+
+		Node toInsert = new Node(newEntry, null);
+		numberOfEntries++;
+
+		if (newPosition == 0) {// the only value for the empty list
+			toInsert.setNext(firstNode);
+			firstNode = toInsert;
+			return;
+		}
+		// else traverse the chain
+		int idx = 0;
+		boolean found = false;
+		Node after = firstNode, before = null;
+		do {
+			if (idx == newPosition) {
+				found = true;
+				assert (before != null);
+				before.setNext(toInsert);
+				toInsert.setNext(after);
+			} 
+			else {
+				before = after;
+				after = after.getNext();
+				idx++;
+			}
+		} 
+		while (!found);
 	}
 
 	@Override
 	public T remove(int givenPosition) {
-	      T theEntry;
-	      if (givenPosition < 0 || givenPosition >= numberOfEntries)
-	            throw new IndexOutOfBoundsException(
-	                    "Illegal Position given to remove operation");
-	      theEntry = list[givenPosition];
-	      removeGap(givenPosition);
-	      numberOfEntries--;
-	      return theEntry;
+		if (isEmpty())
+			throw new NullPointerException();
+		if (givenPosition < 0 || givenPosition >= getLength())
+			throw new IndexOutOfBoundsException();
+		T dataItem = (T) firstNode.getData();
+		numberOfEntries--;
+		if (givenPosition == 0)
+			firstNode = firstNode.getNext();
+		else {
+			int idx = 0;
+			Node nextNode = firstNode;
+			
+			for (Node currNode = firstNode; nextNode != null; currNode = nextNode) {
+				idx++;
+				nextNode = currNode.getNext();
+				if (idx == givenPosition) { // nextNode is to be removed
+					assert (nextNode != null);
+					dataItem = (T) nextNode.getData();
+					currNode.setNext(nextNode.getNext());
+					break;
+				}
+			}
+		}
+		return dataItem;
 	}
 
 	@Override
-	public boolean remove(T entry) {
+	public boolean remove(T anEntry) {
+		boolean result = false;
+		Node nodeN = getReferenceTo(anEntry);
 		
-		return false;
+		if (nodeN != null) {
+			nodeN.data = firstNode.data; // Replace located entry with entry
+			// in first node
+			firstNode = firstNode.next; // Remove first node
+			numberOfEntries--;
+			result = true;
+		} // end if
+		return result;
+	}
+
+	private Node getReferenceTo(T anEntry) {
+		boolean found = false;
+		Node currentNode = firstNode;
+		while (!found && (currentNode != null))
+		{
+			if (anEntry.equals(currentNode.data))
+				found = true;
+			else
+				currentNode = currentNode.next;
+		} // end while
+		return currentNode;
 	}
 
 	@Override
 	public void clear() {
-		// TODO Auto-generated method stub
-		
+		if (!isEmpty()) {
+			firstNode = null;
+		}
 	}
 
 	@Override
 	public T replace(int givenPosition, T newEntry) {
-		// TODO Auto-generated method stub
-		return null;
+		if ((givenPosition >= 1) && (givenPosition <= numberOfEntries)){
+			assert !isEmpty();
+			Node desiredNode = getNodeAt(givenPosition);
+			T originalEntry = (T) desiredNode.getData();
+			desiredNode.setData(newEntry);
+			return originalEntry;
+		}
+		else
+			throw new IndexOutOfBoundsException("Illegal position given to replace operation.");
+	}
+
+	private Node getNodeAt(int givenPosition) {
+		Node lastNode = null;
+		assert (firstNode != null) && (1 <= givenPosition) && (givenPosition <= numberOfEntries);
+		Node currentNode = firstNode;
+		if (givenPosition == numberOfEntries)
+			currentNode = lastNode;
+		else if (givenPosition > 1) {
+			for (int counter = 1; counter < givenPosition; counter++)
+				currentNode = currentNode.getNext();
+		} // end if
+		assert currentNode != null;
+		return currentNode;
 	}
 
 	@Override
 	public T getEntry(int givenPosition) {
-		// TODO Auto-generated method stub
-		return null;
+		if ((givenPosition >= 1) && (givenPosition <= numberOfEntries))
+		{
+			assert !isEmpty();
+			return (T) getNodeAt(givenPosition).getData();
+		}
+		else
+			throw new IndexOutOfBoundsException("Illegal position given to getEntry operation.");  // end getEntry
+	}
+	
+	@Override
+	public int getLength() {
+		int numEntries = 0;
+		
+		for (Node currNode = firstNode; currNode != null; currNode = currNode.getNext())
+			numEntries++;
+		return numEntries;
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return firstNode == null;
+	}
+
+	@Override
+	public boolean contains(T anEntry) {
+		boolean found = false;
+		Node currentNode = firstNode;
+
+		while (!found && (currentNode != null)){
+			if (anEntry.equals(currentNode.getData()))
+				found = true;
+			else
+				currentNode = currentNode.getNext();
+		} // end while
+		return found;
 	}
 
 	@Override
 	public Object[] toArray() {
 		@SuppressWarnings("unchecked")
-		T[] result = (T[]) new Object[numberOfEntries];
-        for (int idx = 0; idx < numberOfEntries; idx ++)
-            result[idx] = list[idx];
+		T[] result = (T[])new Object[numberOfEntries]; // Unchecked cast
+		int index = 0;
+		Node currentNode = firstNode;
+		
+		while ((index < numberOfEntries) && (currentNode != null)){
+			result[index] = (T) currentNode.data;
+			index++;
+			currentNode = currentNode.next;
+		} // end while
 		return result;
 	}
 
-	@Override
-	public boolean contains(T anEntry) {
-		
-		return false;
-	}
+	public class Node<T> {
+		private T data;
+		private Node next;
 
-	@Override
-	public int getLength() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-	
-	@Override
-	public boolean isEmpty() {return list == null;}
-	
-	// Private methods
-	private void checkCapacity(int capacity) {
-		if(capacity > MAX_CAPACITY) {
-			throw new IllegalArgumentException();
+		public Node(T data, Node next) {
+			this.data = data;
+			this.next = next;
 		}
-	}
-	
-	private void ensureCapacity() {
-        if (numberOfEntries >= capacity) {
-            capacity *= 2;
-            checkCapacity (capacity); // too big ?
-            list = Arrays.copyOf(list, capacity);       
-        }
-	}
-	
-	private void makeRoom(int newPosition) {
-		assert (newPosition >= 0 && newPosition <= numberOfEntries);
-        for (int idx = numberOfEntries; idx > newPosition; idx --)
-            list[idx] = list[idx-1];
-	}
-	
-	private void removeGap(int givenPosition) {
-		 assert (givenPosition >= 0 && givenPosition < numberOfEntries);
-		 
-		 for (int index = givenPosition; index < numberOfEntries - 1; index ++){
-		            list[index] = list[index+1];
-		  }
+
+		public T getData() {
+			return data;
+		}
+
+		public void setData(T data) {
+			this.data = data;
+		}
+
+		public Node getNext() {
+			return next;
+		}
+
+		public void setNext(Node next) {
+			this.next = next;
+		}
 	}
 }
