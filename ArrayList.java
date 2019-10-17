@@ -1,127 +1,154 @@
 package classes;
 
+import java.util.Arrays;
+
 public class ArrayList<T> {
-	private Node head;
-	private int numberOfEntries;
-	
-	
-	public ArrayList() {
-		head = null;
-		numberOfEntries = 0;
+	private T[] list;
+	private int numberOfEntries, capacity;
+	private static final int DEFAULT_CAPACITY = 10;
+	private static final int MAX_CAPACITY = 10000;
+
+	public ArrayList(int capacity) {
+		if (capacity < DEFAULT_CAPACITY) {
+			capacity = DEFAULT_CAPACITY;
+		}
+
+		else {
+			checkCapacity (capacity);
+
+			this.capacity = capacity;
+
+			@SuppressWarnings("unchecked")
+			T[] temp = (T[]) new Object[capacity];
+			list = temp;
+			numberOfEntries = 0;
+		}
 	}
-	
+
+	public ArrayList() {this(DEFAULT_CAPACITY);}
+
 	public void add(T newEntry) {
-		 Node toInsert = new Node(newEntry, null);
-		 Node curNode, nextNode;
-		 numberOfEntries++;
-		 if (head == null) {
-			 head = head;
-			 return;
-	        }
-		 	
-		 curNode = head;
-		 
-		 for (nextNode = curNode.getNext(); nextNode != null; ) {
-			 curNode = nextNode;
-			 nextNode = curNode.getNext();
-		   }
-		 // loop finished when nextNode == null, currNode at the end
-		 curNode.setNext (toInsert);  
+		list[numberOfEntries] = newEntry;
+		numberOfEntries ++;
+		ensureCapacity();
 	}
-	
+
+
 	public void add(int newPosition, T newEntry) {
-		if (newPosition < 0 || newPosition > getLength() )
+		if (newPosition < 0 || newPosition > numberOfEntries) {
 			throw new IndexOutOfBoundsException();
-			
-		Node toInsert = new Node (newEntry, null);
-	     numberOfEntries ++;
-			
-		if (newPosition == 0) { // including empty list
-			toInsert.setNext (head);
-			head = toInsert;
-			return;
 		}
-		int pos = 1;
-		Node before = head;
-		for (Node after = head.getNext(); after != null; ) {
-			if (pos == newPosition) { //insert here
-				before.setNext (toInsert);
-				toInsert.setNext (after);
-				return;
-			}
-			before = after;
-			after = after.getNext();
-			pos ++;	
-		}
-		before.setNext (toInsert); // When loop finished, after == null;
-	                               // newPosition == length; end of chain
+
+		makeRoom (newPosition);
+		list[newPosition] = newEntry;
+		numberOfEntries ++;
+		ensureCapacity();
 	}
-	
+
 	public T remove(int givenPosition) {
-	    if (isEmpty())
-	        throw new NullPointerException();
-	     if (givenPosition < 0 || givenPosition >= getLength())
-	        throw new IndexOutOfBoundsException();
-	     T dataItem = (T) head.getData();
-	     numberOfEntries --;        
-	     if (givenPosition == 0)
-	        head = head.getNext();
-	     else {
-	        int idx = 0;
-	        Node nextNode = head;
-	        for (Node currNode = head; nextNode != null; 
-	                                      currNode = nextNode) {
-	           idx ++;
-	           nextNode = currNode.getNext();
-	           if (idx == givenPosition ){ // nextNode is to be removed 
-	              assert (nextNode != null);
-	              dataItem = (T) head.getData();
-	              currNode.setNext(nextNode.getNext());
-	              break;
-	             } 
-	          }
-	      }
-	     return dataItem;
+		T theEntry;
+		if (givenPosition < 0 || givenPosition >= numberOfEntries) {
+			throw new IndexOutOfBoundsException("Illegal Position given to remove operation");
+		}
+
+		theEntry = list[givenPosition];
+		removeGap(givenPosition);
+		numberOfEntries--;
+		return theEntry;
 	}
-	
+
 	public boolean remove(T entry) {
-		return false;
+		boolean result = false;
+		int position = getPosition(entry);
+		if (position > 0){
+			list[position] = remove(position);
+			result = true;
+		} // end if
+		return result;
 	}
+
+	public int getPosition(T anEntry){
+		int position = 1;
+		int length = list.length;
+		// Find position of anEntry
+		while ( (position <= length) && (list.length > 0) ){
+			position++;
+		} // end while
+		// See whether anEntry is in list
+		if ( (position > length) || (list.length) != 0) {
+			position = -position; // anEntry is not in list
+		} // end if
+		return position;
+	}
+
 	public void clear() {
-		
+		for(int i = 0; i < numberOfEntries; i++) {
+			list[numberOfEntries - i] = null;
+		}
 	}
+
+
 	public T replace(int givenPosition, T newEntry) {
-		return null;
+		if ((givenPosition >= 1) && (givenPosition <= numberOfEntries)){
+			assert !isEmpty();
+			T originalEntry = list[givenPosition];
+			list[givenPosition] = newEntry;
+			return originalEntry;
+		}
+		else
+			throw new IndexOutOfBoundsException("Illegal position given to replace operation.");
 	}
-	public T getEntry(int givenPosition) {
-		return null;
-	}
+
 	public Object[] toArray() {
-		return null;
+		@SuppressWarnings("unchecked")
+		T[] result = (T[]) new Object[numberOfEntries];
+		for (int idx = 0; idx < numberOfEntries; idx ++)
+			result[idx] = list[idx];
+		return result;
 	}
+
 	public boolean contains(T anEntry) {
-		return false;
+		boolean found = false;
+		int index = 1;
+		while (!found && (index <= numberOfEntries)){
+			if (anEntry.equals(list[index]))
+				found = true;
+			index++;
+		}
+		return found;
 	}
-	public int getLength() {
-	    int numEntries = 0;
-	    
-	    for (Node currNode = head; currNode != null;
-	    	currNode = currNode.getNext())
-	    	numEntries++;
-	    
-	    return numEntries;
+
+	public int getLength() {return numberOfEntries;}
+
+	public boolean isEmpty() {return list == null;}
+
+	// Private methods
+	private void checkCapacity(int capacity) {
+		if(capacity > MAX_CAPACITY) {
+			throw new IllegalArgumentException();
+		}
 	}
-	
-	public boolean isEmpty() {
-		return head == null;
+
+	private void ensureCapacity() {
+		if (numberOfEntries >= capacity) {
+			capacity *= 2;
+			checkCapacity (capacity); // too big ?
+			list = Arrays.copyOf(list, capacity);       
+		}
 	}
-	
-	private Node getNodeAt(int index) {
-	   assert (index >= 0 && index < getLength());
-	   Node currNode = head;
-	  
-	   for (int i = 0; i < index; i ++)
-	       currNode = currNode.getNext();
-	    return currNode;
+
+	private void makeRoom(int newPosition) {
+		assert (newPosition >= 0 && newPosition <= numberOfEntries);
+		for (int idx = numberOfEntries; idx > newPosition; idx --)
+			list[idx] = list[idx-1];
 	}
+
+	private void removeGap(int givenPosition) {
+		assert (givenPosition >= 0 && givenPosition < numberOfEntries);
+
+		for (int index = givenPosition; index < numberOfEntries - 1; index ++){
+			list[index] = list[index+1];
+		}
+	}
+
 }
